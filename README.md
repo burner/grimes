@@ -1,19 +1,24 @@
-# Frank Grimes — Autonomous Forge Issue Loop for opencode
+# Frank Grimes — Autonomous Coding Loop for opencode
 
-An opencode plugin that autonomously picks up issues from your forge (Gitea, GitLab, or GitHub), plans, builds, verifies, and closes them.
+An opencode plugin that autonomously picks up issues from your forge (Gitea/Forgejo,
+GitLab, or GitHub), plans, builds, verifies, and closes them, when opencode
+hits its idle state.
+
+[!CAUTION]
+> Make sure you have the money to have Frank burn the tokens.
 
 ## Install
 
-1. Copy `grimes.ts` into your project
-2. `bun install` (needs `@opencode-ai/plugin`, `@opencode-ai/sdk` — see `package.json`)
+1. Copy `grimes.ts` into `~/.config/opencode/plugins/` and `grimes_mcp.py` into `~/.config/opencode/`.
+2. `bun install` (needs `@opencode-ai/plugin` — see `package.json`)
 3. Add to `opencode.json`:
    ```json
    {
-     "plugin": ["bun run grimes.ts"],
-     "mcpServers": {
+     "plugin": ["bun run plugins/grimes.ts"],
+     "mcp": {
        "grimes": {
-         "command": "python3",
-         "args": ["./grimes_mcp.py"]
+         "type": "local",
+         "command": ["python3", "./grimes_mcp.py"]
        }
      }
    }
@@ -84,25 +89,7 @@ Both components share the same forge credentials (`.grimes/env`). The MCP server
 
 When creating issues via `create_issue`, the MCP server automatically inserts a
 refactoring issue after every 3 non-refactoring issues in the same milestone.
-Each refactoring issue scans for ALL 15 patterns and applies any that are applicable:
-
-| # | Pattern | What to look for |
-|---|---------|-------------------|
-| 0 | Extract Method | Long methods with distinct sections |
-| 1 | Replace Magic Number with Constant | Raw literals in code |
-| 2 | Replace Conditional with Polymorphism | Switch/if-else chains on type |
-| 3 | Extract Class | Classes doing too much |
-| 4 | Introduce Parameter Object | Related parameter groups (data clumps) |
-| 5 | Replace Error Code with Exception | Return-code error handling |
-| 6 | Encapsulate Collection | Exposed internal collections |
-| 7 | Replace Type Code with Strategy | Enum-based behavior switching |
-| 8 | Introduce Null Object | Repeated null checks |
-| 9 | Consolidate Duplicate Conditional Fragments | Identical code in branches |
-| 10 | Replace Inheritance with Delegation | Misused inheritance hierarchies |
-| 11 | Move Method | Methods in the wrong class |
-| 12 | Decompose Conditional | Complex boolean expressions |
-| 13 | Replace Temp with Query | Unnecessary temporary variables |
-| 14 | Form Template Method | Repeated algorithm structure across subclasses |
+Each refactoring issue scans for ALL patterns and applies any that are applicable:
 
 When `create_issue` returns a `refactor_issue` field, wire dependencies as:
 `last_feature_issue -> refactor_issue -> next_feature_issue`
