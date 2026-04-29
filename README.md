@@ -50,13 +50,13 @@ Add this to your `AGENTS.md` so the LLM knows how the loop works:
 ```markdown
 ## Frank Grimes Loop
 
-When the loop is enabled, the plugin drives a state machine:
-plan → build → verify → (pass → close + next issue) or (fail → retry or re-plan)
+When the loop is enabled, the plugin drives an idle loop on `session.idle`:
+pick next issue → plan → build → verify → (pass → close + next) or (fail → retry / re-plan / skip)
 
 ### Your job
 - **plan phase**: Read the issue, plan implementation, start coding
 - **build phase**: Implement the solution, commit with `(refs #N)`
-- **verify phase**: If verify commands fail, analyze output and fix
+- **verify phase**: LLM always judges results — confirm implementation on pass, analyze real bug vs false positive on fail
 
 ### Commit conventions
 - `<description> (refs #N)` while working
@@ -127,41 +127,85 @@ Set only ONE backend. The plugin auto-detects which one.
 
 ## How It Works
 
+### Phase 1: Issue Planning (manual)
+
+The agent uses MCP tools interactively to prepare work before enabling the loop.
+
 ```mermaid
-stateDiagram-v2
-    [*] --> PLAN
-    PLAN --> BUILD
-    BUILD --> VERIFY : commands pass or fail
-    VERIFY --> CLOSE : verdict pass
-    VERIFY --> BUILD : retry under max retries
-    VERIFY --> PLAN : re-plan after 6 failures
-    VERIFY --> DISABLED : max retries hit
-    CLOSE --> PLAN : more issues
-    CLOSE --> [*] : no more issues
-    DISABLED --> [*]
+flowchart TD
+    START([Agent starts planning]) --> M[create_milestone]
+    M --> I1[create_issue — with description, tasks, tests]
+
+    I1 --> AUTO{every 3rd issue?}
+    AUTO -->|yes| REF[auto-create refactor issue]
+    AUTO -->|no| I2{is_last=true?}
+    REF --> I2
+    I2 -->|yes, needs tail refactor| TAIL[auto-create tail refactor issue]
+    I2 -->|no| DEP
+    TAIL --> DEP
+
+    subgraph More issues?
+        I2B[create next issue]
+    end
+    I2B --> AUTO
+    DEP[add_dependency — wire chain: feature → refactor → next] --> I2B
+
+    DEP --> CHECK[get_next_issue — verify readiness]
+    CHECK --> ENABLE[set enabled:true in loop.json]
+
+    ENABLE --> LOOP([Phase 2 begins])
 ```
 
-### States
+Every 3rd non-refactor issue triggers a refactoring issue (scans all patterns). The last issue (`is_last`) may spawn a tail refactor. Dependencies are wired as: `A → refactor → B → refactor → C...`
+
+### Phase 2: Autonomous Idle Loop
+
+Driven by the opencode plugin on `session.idle`. Only three states are persisted (`plan → build → verify`); everything else is a transient action.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PICK : idle, no state, loop enabled
+
+    state PICK <<choice>>
+    PICK --> PLAN : next unblocked issue found
+    PICK --> [*] : no issues left — loop disabled
+
+    PLAN --> BUILD : agent goes idle
+    BUILD --> VERIFY : run verify commands, LLM judges
+
+    state VERIFY_OUTCOME <<choice>>
+    VERIFY --> VERIFY_OUTCOME : parse LLM verdict
+
+    VERIFY_OUTCOME --> PICK : pass — close issue, pick next
+    VERIFY_OUTCOME --> BUILD : fail — retry under max
+    VERIFY_OUTCOME --> PLAN : fail — re-plan at ≥6 total, 1st time
+    VERIFY_OUTCOME --> PICK : fail — skip issue, pick next
+```
+
+#### States
 
 | State | What happens |
 |-------|-------------|
-| **PLAN** | Agent reads issue body, creates todo list, plans approach |
-| **BUILD** | Agent writes code, commits with `(refs #N)` |
-| **VERIFY** | Mechanical commands run. On pass: LLM checks if implementation matches issue description. On fail: LLM analyzes whether errors are real bugs or false positives |
-| **CLOSE** | Issue closed via forge API, state cleared, next issue fetched |
-| **DISABLED** | Loop paused — set `enabled: true` in `loop.json` to resume |
+| **PLAN** | Next unblocked issue picked (most dependents first). Agent receives issue context + planning prompt |
+| **BUILD** | Agent writes code, commits with `(refs #N)`. On idle, verify commands run |
+| **VERIFY** | Verify commands execute mechanically. LLM always judges: on pass, confirms implementation matches issue; on fail, decides real bug vs false positive |
 
-### Transitions
+#### Failure paths from VERIFY
 
-1. On `session.idle`, checks if the loop is enabled and no state exists
-2. Calls the forge API to get the next unblocked issue
-3. Creates an opencode session and starts the plan phase
-4. On idle after plan → transitions to build
-5. On idle after build → runs verify commands from `verify.json`
-6. All pass → asks LLM to confirm implementation matches issue description
-7. LLM passes → closes issue, picks next one
-8. Commands fail → asks LLM to judge real bug vs false positive
-9. LLM fails → retries build (up to `max_retries`), re-plans after 6 total failures
+| Condition | Action |
+|-----------|--------|
+| `attempt < max_retries` AND `total < 6` | Increment attempt → **BUILD** |
+| `total ≥ 6`, first re-plan | Reset attempt, tell agent to try a different approach → **PLAN** |
+| `total ≥ 6`, already re-planned once | Skip issue (comment + wontfix label) → **PICK** |
+| `attempt ≥ max_retries` (before threshold) | Skip issue → **PICK** |
+
+#### Issue selection
+
+On PICK, the loop fetches all open issues in the milestone, filters to those with no open blockers, then sorts by:
+1. Most open dependents (unblock the most downstream work first)
+2. Lowest issue number (tiebreaker)
+
+If the current milestone has no open issues, it checks other milestones for work before disabling.
 
 ## Debug
 
