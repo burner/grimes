@@ -934,7 +934,7 @@ async function buildContextPrefix(client: GrimesClient, directory: string, issue
 export function resetWorkspace(directory: string): void {
   try {
     execSync("git checkout -- .", { cwd: directory, stdio: ["pipe", "pipe", "pipe"] })
-    execSync("git clean -fd", { cwd: directory, stdio: ["pipe", "pipe", "pipe"] })
+    execSync("git clean -fd --exclude=.grimes", { cwd: directory, stdio: ["pipe", "pipe", "pipe"] })
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : String(error)
     debug(`resetWorkspace: warning: ${msg}`)
