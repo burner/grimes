@@ -12,12 +12,12 @@ The Grimes Loop makes your LLM work until all tasks are build and verified.
 
 ## Install
 
-1. Copy `grimes.ts` into `~/.config/opencode/plugins/` and `grimes_mcp.py` into `~/.config/opencode/`.
-2. `bun install` (needs `@opencode-ai/plugin` — see `package.json`)
-3. Add to `opencode.json`:
+1. Symlink or copy `grimes.ts` into `~/.config/opencode/plugins/` (auto-discovered by opencode).
+2. Symlink or copy `grimes_mcp.py` into `~/.config/opencode/`.
+3. Run `bun install` in `~/.config/opencode/` (needs `@opencode-ai/plugin` and `@opencode-ai/sdk` — see `package.json`).
+4. Add the MCP server to `~/.config/opencode/opencode.json` (no `plugin` entry needed — auto-discovery handles it):
    ```json
    {
-     "plugin": ["bun run plugins/grimes.ts"],
      "mcp": {
        "grimes": {
          "type": "local",
@@ -81,8 +81,7 @@ Two components work together:
    calls these during the plan phase to set up work, create milestones, wire
    dependencies, and close issues.
 
-Both components share the same forge credentials (`.grimes/env`). The MCP server is configured in `opencode.json` under
-`mcpServers` and the plugin under `plugin` — opencode loads both on startup.
+Both components share the same forge credentials (`.grimes/env`). The MCP server is configured in `opencode.json` under `mcp` — the plugin is auto-discovered from `~/.config/opencode/plugins/grimes.ts`.
 
 ### Config files
 - `.grimes/loop.json` — `enabled`, `milestone_id`, `create_mr`, `max_retries`
