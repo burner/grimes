@@ -1,0 +1,54 @@
+name: Check Types
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check-types:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install Python checkers
+        run: pip install ruff flake8 pylint pyflakes mypy pyright basedpyright
+
+      - uses: oven-sh/setup-bun@v2
+
+      - name: Install JS/TS dependencies
+        run: bun install
+
+      - name: ruff
+        run: ruff check grimes_mcp.py
+
+      - name: flake8
+        run: flake8 grimes_mcp.py
+
+      - name: pylint
+        run: pylint --errors-only grimes_mcp.py
+
+      - name: pyflakes
+        run: pyflakes grimes_mcp.py
+
+      - name: mypy
+        run: mypy --ignore-missing-imports grimes_mcp.py
+
+      - name: pyright
+        run: pyright grimes_mcp.py
+
+      - name: basedpyright
+        run: basedpyright grimes_mcp.py
+
+      - name: eslint
+        run: npx eslint .
+
+      - name: tsc
+        run: npx tsc --noEmit
+
+      - name: bun test
+        run: bun test

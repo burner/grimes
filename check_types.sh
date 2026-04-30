@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+echo "=== bun install ==="
+bun install
+
 FILE="grimes_mcp.py"
 PASS=0
 FAIL=0
