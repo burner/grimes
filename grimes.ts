@@ -987,9 +987,8 @@ export async function startNewIssue(client: GrimesClient, directory: string, con
         }
       }
     }
-    debug("startNewIssue: no issues found anywhere, disabling loop")
-    await disableLoop(directory)
-    await showToast(client, directory, "No more issues — loop disabled", "info")
+    debug("startNewIssue: no issues found anywhere, loop stays enabled")
+    await showToast(client, directory, "No ready issues right now — loop idle", "info")
     return
   }
 

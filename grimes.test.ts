@@ -1128,7 +1128,7 @@ describe("handleIdle", () => {
     expect(planPrompt).toBeDefined()
   })
 
-  it("disables loop when no milestones have issues", async () => {
+  it("stays enabled when no milestones have issues", async () => {
     mockFetchWithRoutes({
       "/milestones": [
         { id: 1, title: "Done", open_issues: 0 },
@@ -1143,7 +1143,7 @@ describe("handleIdle", () => {
     const savedState = await readState(tempDir)
     expect(savedState).toBeNull()
     const config = await readConfig(tempDir)
-    expect(config?.enabled).toBe(false)
+    expect(config?.enabled).toBe(true)
     expect(prompts.length).toBe(0)
   })
 
