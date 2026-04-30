@@ -1,10 +1,13 @@
-# Frank Grimes — Autonomous Coding Loop for opencode
+# The Frank Grimes Loop — Autonomous Coding Loop for opencode
 
 An opencode plugin that autonomously picks up issues from your forge (Gitea/Forgejo,
 GitLab, or GitHub), plans, builds, verifies, and closes them, when opencode
 hits its idle state.
 
-[!CAUTION]
+LLM's stop for all kinds of reasons, being done with a task is only one.
+The Grimes Loop makes your LLM work until all tasks are build and verified.
+
+> [!CAUTION]
 > Make sure you have the money to have Frank burn the tokens.
 
 ## Install
@@ -51,12 +54,13 @@ Add this to your `AGENTS.md` so the LLM knows how the loop works:
 ## Frank Grimes Loop
 
 When the loop is enabled, the plugin drives an idle loop on `session.idle`:
-pick next issue → plan → build → verify → (pass → close + next) or (fail → retry / re-plan / skip)
+pick next issue → plan → build → verify_ci → verify_llm → (pass → close + next) or (fail → retry / re-plan / skip)
 
 ### Your job
 - **plan phase**: Read the issue, plan implementation, start coding
 - **build phase**: Implement the solution, commit with `(refs #N)`
-- **verify phase**: LLM always judges results — confirm implementation on pass, analyze real bug vs false positive on fail
+- **verify_ci phase**: Deterministic verify commands run via `execSync` — exit codes decide pass/fail
+- **verify_llm phase**: LLM always judges results — confirm implementation on pass, analyze real bug vs false positive on fail
 
 ### Commit conventions
 - `<description> (refs #N)` while working
@@ -67,7 +71,7 @@ pick next issue → plan → build → verify → (pass → close + next) or (fa
 Two components work together:
 
 1. **grimes.ts** (opencode plugin) — the autonomous loop. Drives the state
-   machine, picks the next unblocked issue, runs verify commands, closes issues
+   machine, picks the next unblocked issue, runs verify commands (CI + LLM), closes issues
    on pass. Does NOT provide forge CRUD tools — it only reads issues and updates
    state.
 
@@ -156,11 +160,15 @@ flowchart TD
     ENABLE --> LOOP([Phase 2 begins])
 ```
 
-Every 3rd non-refactor issue triggers a refactoring issue (scans all patterns). The last issue (`is_last`) may spawn a tail refactor. Dependencies are wired as: `A → refactor → B → refactor → C...`
+Every 3rd non-refactor issue triggers a refactoring issue (scans all patterns). 
+The last issue (`is_last`) may spawn a tail refactor. Dependencies are wired 
+as: `A → refactor → B → refactor → C...`
 
 ### Phase 2: Autonomous Idle Loop
 
-Driven by the opencode plugin on `session.idle`. Only three states are persisted (`plan → build → verify`); everything else is a transient action.
+Driven by the opencode plugin on `session.idle`. Only four states are persisted 
+(`plan → build → verify_ci → verify_llm`); everything else is a transient 
+action.
 
 ```mermaid
 stateDiagram-v2
@@ -171,10 +179,11 @@ stateDiagram-v2
     PICK --> [*] : no issues left — loop disabled
 
     PLAN --> BUILD : agent goes idle
-    BUILD --> VERIFY : run verify commands, LLM judges
+    BUILD --> VERIFY_CI : run verify commands (deterministic, exit codes only)
+    VERIFY_CI --> VERIFY_LLM : pass/fail output sent to LLM
 
     state VERIFY_OUTCOME <<choice>>
-    VERIFY --> VERIFY_OUTCOME : parse LLM verdict
+    VERIFY_LLM --> VERIFY_OUTCOME : parse LLM verdict
 
     VERIFY_OUTCOME --> PICK : pass — close issue, pick next
     VERIFY_OUTCOME --> BUILD : fail — retry under max
@@ -187,10 +196,11 @@ stateDiagram-v2
 | State | What happens |
 |-------|-------------|
 | **PLAN** | Next unblocked issue picked (most dependents first). Agent receives issue context + planning prompt |
-| **BUILD** | Agent writes code, commits with `(refs #N)`. On idle, verify commands run |
-| **VERIFY** | Verify commands execute mechanically. LLM always judges: on pass, confirms implementation matches issue; on fail, decides real bug vs false positive |
+| **BUILD** | Agent writes code, commits with `(refs #N)`. On idle, transitions to verify_ci |
+| **VERIFY_CI** | Verify commands execute mechanically via `execSync`. Exit codes determine pass/fail deterministically |
+| **VERIFY_LLM** | LLM always judges: on pass, confirms implementation matches issue; on fail, decides real bug vs false positive |
 
-#### Failure paths from VERIFY
+#### Failure paths from VERIFY_LLM
 
 | Condition | Action |
 |-----------|--------|
@@ -201,11 +211,13 @@ stateDiagram-v2
 
 #### Issue selection
 
-On PICK, the loop fetches all open issues in the milestone, filters to those with no open blockers, then sorts by:
+On PICK, the loop fetches all open issues in the milestone, filters to those 
+with no open blockers, then sorts by:
 1. Most open dependents (unblock the most downstream work first)
 2. Lowest issue number (tiebreaker)
 
-If the current milestone has no open issues, it checks other milestones for work before disabling.
+If the current milestone has no open issues, it checks other milestones for 
+work before disabling.
 
 ## Debug
 
