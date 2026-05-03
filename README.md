@@ -1,5 +1,7 @@
 # The Frank Grimes Loop — Autonomous Coding Loop for opencode
 
+<img src="Frank_Grimes.png" alt="Frank Grimes" align="right" width="200" />
+
 An opencode plugin that autonomously picks up issues from your forge (Gitea/Forgejo,
 GitLab, or GitHub), plans, builds, verifies, and closes them, when opencode
 hits its idle state.
