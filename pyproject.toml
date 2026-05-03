@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "opencode-grimes-mcp"
+version = "1.0.0"
+description = "MCP server for opencode-grimes — forge CRUD tools for Gitea, GitLab, and GitHub"
+requires-python = ">=3.11"
+license = "AGPL-3.0"
+keywords = ["opencode", "mcp", "forge", "gitea", "gitlab", "github"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: OS Independent",
+]
+
+[project.scripts]
+grimes-mcp = "grimes_mcp:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["grimes_mcp.py"]

@@ -12,21 +12,36 @@ The Grimes Loop makes your LLM work until all tasks are build and verified.
 
 ## Install
 
-1. Symlink or copy `grimes.ts` into `~/.config/opencode/plugins/` (auto-discovered by opencode).
-2. Symlink or copy `grimes_mcp.py` into `~/.config/opencode/`.
-3. Run `bun install` in `~/.config/opencode/` (needs `@opencode-ai/plugin` and `@opencode-ai/sdk` — see `package.json`).
-4. Add the MCP server to `~/.config/opencode/opencode.json` (no `plugin` entry needed — auto-discovery handles it):
-   ```json
-   {
-     "mcp": {
-       "grimes": {
-         "type": "local",
-         "command": ["python3", "./grimes_mcp.py"]
-       }
-     }
-   }
-   ```
-4. Create `.grimes/env` in your project root (pick **one** backend):
+### Plugin (npm)
+
+Add to your `opencode.json`:
+```json
+{
+  "plugin": ["opencode-grimes"]
+}
+```
+
+### MCP Server (pip)
+
+```bash
+pip install opencode-grimes-mcp
+```
+
+Then add to your `opencode.json`:
+```json
+{
+  "mcp": {
+    "grimes": {
+      "type": "local",
+      "command": ["grimes-mcp"]
+    }
+  }
+}
+```
+
+### Project setup
+
+1. Create `.grimes/env` in your project root (pick **one** backend):
 
     ```
     # .grimes/env
@@ -37,11 +52,13 @@ The Grimes Loop makes your LLM work until all tasks are build and verified.
 
     See `.grimes/env.example` for GitLab and GitHub options.
 
-5. Create `.grimes/loop.json`:
+2. Create `.grimes/loop.json`:
    ```json
-   { "enabled": true, "milestone_id": null, "create_mr": false, "max_retries": 2 }
+   { "enabled": true }
    ```
-6. Create `.grimes/verify.json`:
+   Optional fields with defaults: `milestone_id` (null), `create_mr` (false), `max_retries` (2).
+
+3. Create `.grimes/verify.json`:
    ```json
    { "commands": ["bash check_types.sh"] }
    ```
