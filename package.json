@@ -19,6 +19,11 @@
     "type": "git",
     "url": "git+https://github.com/burner/grimes.git"
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "license": "AGPL-3.0",
   "peerDependencies": {
     "@opencode-ai/plugin": "^1.14.30",
