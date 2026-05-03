@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Autonomous coding loop for opencode — picks up forge issues, plans, builds, verifies, and closes them on idle",
   "type": "module",
-  "main": "./grimes.ts",
+  "main": "./dist/grimes.js",
   "exports": {
-    ".": "./grimes.ts"
+    ".": "./dist/grimes.js"
   },
   "keywords": [
     "opencode",
@@ -35,6 +35,7 @@
     "typescript-eslint": "^8"
   },
   "scripts": {
+    "build": "bun build grimes.ts --outdir=dist --target=bun",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
