@@ -84,7 +84,7 @@ export interface MessageEntry {
 // because a single bad plan can exhaust retries without ever being questioned.
 export const PLAN_RETRY_THRESHOLD = 6
 
-const GRIMES_DEBUG = process.env["GRIMES_DEBUG"] === "1"
+const GRIMES_DEBUG = ["1", "true"].includes(process.env["GRIMES_DEBUG"] ?? "")
 type DebugFn = (...args: Array<unknown>) => void
 const debugFn: DebugFn = () => {}
 
@@ -134,7 +134,13 @@ async function ensureGrimesDir(directory: string): Promise<string> {
 export async function readConfig(directory: string): Promise<GrimesConfig | null> {
   try {
     const content = await readFile(path.join(grimesDir(directory), "loop.json"), "utf8")
-    return JSON.parse(content) as GrimesConfig
+    const raw = JSON.parse(content) as Partial<GrimesConfig>
+    return {
+      enabled: raw.enabled === true,
+      milestone_id: raw.milestone_id ?? null,
+      create_mr: raw.create_mr ?? false,
+      max_retries: raw.max_retries ?? 2,
+    }
   } catch {
     return null
   }
@@ -521,7 +527,7 @@ export async function loadForgeConfig(startDir: string): Promise<ForgeResult<For
       parse: (url) => {
         const p = parseRepoUrl(url)
         if (p === null) { return null }
-        return { apiBase: p.base, owner: p.owner, repo: p.repo, projectPath: "", projectEncoded: "" }
+        return { apiBase: "https://api.github.com", owner: p.owner, repo: p.repo, projectPath: "", projectEncoded: "" }
       },
     },
     {

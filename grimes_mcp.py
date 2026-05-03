@@ -324,7 +324,7 @@ def _load_config() -> dict[str, str]:
         cfg["BACKEND"] = "github"
         gh_parsed = _parse_repo_url(cfg["GITHUB_URL"])
         if gh_parsed:
-            cfg["GITHUB_API_BASE"] = gh_parsed[0]
+            cfg["GITHUB_API_BASE"] = "https://api.github.com"
             cfg["GITHUB_OWNER"] = gh_parsed[1]
             cfg["GITHUB_REPO"] = gh_parsed[2]
     elif has_gitea:
